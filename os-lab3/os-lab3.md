@@ -137,6 +137,43 @@ PARNET: value = 20
 PARNET: value = 5
 ```
 
+三、fork2.c代码解释：
+
+（一）、定义两个函数：
+
+观察可知 f(x)为阶乘函数，f(y)类似于斐波那契函数，我们都可以用递归的方式定义他们：
+
+```c
+// 计算 f(x) (阶乘)
+long long compute_fx(int x) {
+    long long result = 1;
+    for (int i = 2; i <= x; i++) {
+        result *= i;
+    }
+    return result;
+}
+
+// 计算 f(y) (类斐波那契)
+long long compute_fy(int y) {
+    if (y == 1 || y == 2) return 1;
+    long long a = 1, b = 1, c;
+    for (int i = 3; i <= y; i++) {
+        c = a + b;
+        a = b;
+        b = c;
+    }
+    return b;
+}
+```
+
+（二）、创建管道和进程
+
+创建两个管道，分别用于父子进程间传递 *f*(*x*) 和 *f*(*y*) 的计算结果。
+
+其中：子进程1计算 *f*(*x*)，结果写入 `pipe_fx`；子进程2：计算 *f*(*y*)，结果写入 `pipe_fy`。父进程：汇总结果并计算 *f*(*x*,*y*)。
+
+具体创建代码如下：
+
 为什么要建立两个管道？因为为了实现f（x,y）一个进程负责计算fx一个负责fy 最后计算结果通过管道传输给主进程计算fxy
 
 
