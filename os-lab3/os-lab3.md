@@ -137,9 +137,9 @@ PARNET: value = 20
 PARNET: value = 5
 ```
 
-三、fork2.c代码解释：
+# 三、fork2.c代码解释：
 
-（一）、定义两个函数：
+## （一）、定义两个函数：
 
 观察可知 f(x)为阶乘函数，f(y)类似于斐波那契函数，我们都可以用递归的方式定义他们：
 
@@ -166,7 +166,7 @@ long long compute_fy(int y) {
 }
 ```
 
-（二）、创建管道和进程
+## （二）、创建管道和进程
 
 创建两个管道，分别用于父子进程间传递 *f*(*x*) 和 *f*(*y*) 的计算结果。
 
@@ -174,8 +174,59 @@ long long compute_fy(int y) {
 
 具体创建代码如下：
 
+```c
+int main() {
+    int x, y;
+    printf("Enter x and y: ");
+    scanf("%d %d", &x, &y);
+
+    int pipe_fx[2], pipe_fy[2];
+    if (pipe(pipe_fx) == -1 || pipe(pipe_fy) == -1) {
+        perror("pipe error");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid_fx = fork();
+    if (pid_fx < 0) {
+        perror("fork error");
+        exit(EXIT_FAILURE);
+    } else if (pid_fx == 0) {
+
+        close(pipe_fx[0]);  
+        long long result = compute_fx(x);
+        write(pipe_fx[1], &result, sizeof(result));
+        close(pipe_fx[1]);
+        exit(EXIT_SUCCESS);
+    }
+
+    pid_t pid_fy = fork();
+    if (pid_fy < 0) {
+        perror("fork error");
+        exit(EXIT_FAILURE);
+    } else if (pid_fy == 0) {
+        close(pipe_fy[0]); 
+        long long result = compute_fy(y);
+        write(pipe_fy[1], &result, sizeof(result));
+        close(pipe_fy[1]);
+        exit(EXIT_SUCCESS);
+    }
+
+    close(pipe_fx[1]); 
+    close(pipe_fy[1]);
+
+    long long fx, fy;
+    read(pipe_fx[0], &fx, sizeof(fx));
+    read(pipe_fy[0], &fy, sizeof(fy));
+
+    printf("f(x,y) = %lld + %lld = %lld\n", fx, fy, fx + fy);
+
+    waitpid(pid_fx, NULL, 0);
+    waitpid(pid_fy, NULL, 0);
+
+    return 0;
+}
+```
+
+通过该方式，实现了父进程和两个子进程协作完成*f*(*x*,*y*) 的计算。
+
 为什么要建立两个管道？因为为了实现f（x,y）一个进程负责计算fx一个负责fy 最后计算结果通过管道传输给主进程计算fxy
-
-
-
-fork()的解释：调用fork之后 则会创造一个子进程，那么父进程和子进程谁先调用是不确定的 都有可能 所以一般用wait
